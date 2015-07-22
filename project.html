@@ -1,0 +1,124 @@
+<head>
+  <title>Projects</title>
+  <!-- <script src="Chart.js"></script> -->
+</head>
+
+<body>
+  <div class="container">
+    <header>
+      <h1>PROJECTS</h1>
+
+      <select data-user="{{selectedProject}}" id="project-select" selected="selected">
+        <option disabled>Select Project</option>
+        {{#each projects}}
+          <option value={{_id}}>{{text}}</option>
+        {{/each}}
+      </select>
+
+      <!--have a checkbox that hides the projects finished-->
+      <label class="hide-completed">
+        <input type="checkbox" checked="{{hideCompleted}}"/>
+        Hide Completed Tasks
+      </label>
+
+      <span class="text"><strong>{{username}}</strong> {{text}}</span>
+      {{> loginButtons}}<br><!--username and password fields (login)-->
+
+      <!--display count-->
+      {{incompleteCount}} Total Projects <br>
+
+      {{#if currentUser}} <!--if there is a user signed in then they can edit to project list-->
+      <form class="new-projects"><!--field that has a placeholder for new projects-->
+        <input type="text" name="text" placeholder="Type to add new projects" />
+      </form>
+
+      <hr> <!-- divider line -->
+      {{/if}}
+
+      {{#if currentUser}} <!--if there is a user signed in then they can edit to project list-->
+      <form class="new-sprints"><!--field that has a placeholder for new sprints-->
+        <input type="text" name="text" placeholder="Type to add new sprints" />
+        <input type="hidden" name="project_id" value="{{_id}}"/>
+      </form>
+
+      <hr>
+      {{/if}}
+
+    </header>
+
+    <ul>
+      {{> project currentProject}}
+    </ul>
+  </div>
+
+  <footer style="background-color:gold">
+    <br>
+    <p style="color: black"><em>For more information on Scrum, visit <a href="https://www.scrumalliance.org/why-scrum">https://www.scrumalliance.org/why-scrum</a></em></p>
+
+    <p>Download <a href="C:\Users\jchung\Desktop\Exec_Guide_to_Scrum.pdf" download>this</a> PDF to read the definitions and concepts.</p>
+  </footer>
+</body>
+
+<template name="project"> <!-- project template -->
+
+    <!-- Project names -->
+  <h2>{{#if currentUser}}<button class="delete" onclick="change #user-select()">&times;</button>{{/if}}
+  {{text}}
+  {{#if currentUser}}<input type="checkbox" checked="{{checked}}" class="toggle-checked" />{{/if}}</h2>
+
+  {{#if currentUser}} <!--if there is a user signed in then they can edit to task list-->
+    <form class="new-tasks"><!--field that has a placeholder for new projects-->
+      <input type="text" name="text" placeholder="Type to add new tasks" />
+      <input type="hidden" name="project_id" value="{{_id}}"/>
+      <input type="hidden" name="sprint_id" value="{{_id}}"/>
+    </form>
+  {{/if}}
+
+  ({{incompleteCount1}}/{{totalCount}} Tasks Remaining)<!-- the remaining tasks -->
+
+  <ul>
+    {{#each sprints _id}}
+      {{> sprint}}
+    {{/each}}
+  </ul>
+
+  <ul style="color:purple">
+    {{#each tasks _id}}
+      {{> task}}
+    {{/each}}
+  </ul>
+
+</template>
+
+<template name="sprint">
+
+  <ul style="color:purple">
+    {{#each tasks _id}}
+      {{> task}}
+    {{/each}}
+  </ul>
+
+  <h3 style="color:orange"> {{#if currentUser}}<button class="delete" onclick="change #user-select()">&times;</button>{{/if}} {{text}} -- due {{deadline}}</h3>
+</template>
+
+<template name="task"> <!-- task template -->
+  <li class="{{#if checked}}checked{{/if}}">
+    {{#if currentUser}}
+      <button class="delete" onclick="change #user-select()">&times;</button>
+      <input type="checkbox" checked="{{checked}}" class="toggle-checked" />
+    {{/if}}
+
+    {{text}} - {{createdAt}} <br>
+  </li>
+
+  {{#if currentUser}}
+
+    <select data-user="{{assignedUser}}" id="user-select">
+      <option disabled>Select User</option>
+      {{#each user}}
+        <option value="{{_id}}">{{username}}</option>
+      {{/each}}
+    </select>
+
+  {{/if}}
+</template>
