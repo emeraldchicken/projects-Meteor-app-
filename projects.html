@@ -1,124 +1,161 @@
-<head>
-  <title>Projects</title>
-  <!-- <script src="Chart.js"></script> -->
-</head>
+Tasks = new Mongo.Collection("tasks");
 
-<body>
-  <div class="container">
-    <header>
-      <h1>PROJECTS</h1>
+if (Meteor.isServer) {
+  // This code only runs on the server
+  Meteor.publish("tasks", function () {
+    return Tasks.find();
+  });
+}
 
-      <select data-user="{{selectedProject}}" id="project-select" selected="selected">
-        <option disabled>Select Project</option>
-        {{#each projects}}
-          <option value={{_id}}>{{text}}</option>
-        {{/each}}
-      </select>
+if (Meteor.isClient) {
+  Meteor.subscribe("tasks");
 
-      <!--have a checkbox that hides the projects finished-->
-      <label class="hide-completed">
-        <input type="checkbox" checked="{{hideCompleted}}"/>
-        Hide Completed Tasks
-      </label>
+  Template.body.helpers ({
+    tasks: function () {
+      if (Session.get("hideCompleted")) {// If hide completed is checked, filter tasks
+        //show newest tasks first
+        return Tasks.find({checked: {$ne: true}}, {sort: {createdAt: -1}});
+      } else { // Otherwise, return all of the tasks
+        return Tasks.find({}, {sort: {createdAt: -1}});
+      }
+    }
+  });
 
-      <span class="text"><strong>{{username}}</strong> {{text}}</span>
-      {{> loginButtons}}<br><!--username and password fields (login)-->
+  Template.body.events({
+    "submit .new-tasks": function (event) {
+      //when a new task is submitted
+      var taskText = event.target.text.value;
+      var projectID = event.target.project_id.value;
+      var sprintID = event.target.sprint_id.value;
+      var d = new Date();
+      var n = d.toDateString();
 
-      <!--display count-->
-      {{incompleteCount}} Total Projects <br>
+    if (!Meteor.userId()) {
+      throw new Meteor.Error("not-authorized");
+      console.log ("not authorized"); //log in console
+    }
 
-      {{#if currentUser}} <!--if there is a user signed in then they can edit to project list-->
-      <form class="new-projects"><!--field that has a placeholder for new projects-->
-        <input type="text" name="text" placeholder="Type to add new projects" />
-      </form>
+    Meteor.call("addTask", {
+      text: taskText,
+      project_id: projectID,
+      sprint_id: sprintID,
+      createdAt: n, //current time
+      deadline: new Date(+new Date + 12096e5),
+      taskOwner: Meteor.userId()
+    });
 
-      <hr> <!-- divider line -->
-      {{/if}}
+    console.log ("Text:" + taskText);
+    console.log ("ProjectID: " + projectID);
+    console.log ("SprintID: " + sprintID);
 
-      {{#if currentUser}} <!--if there is a user signed in then they can edit to project list-->
-      <form class="new-sprints"><!--field that has a placeholder for new sprints-->
-        <input type="text" name="text" placeholder="Type to add new sprints" />
-        <input type="hidden" name="project_id" value="{{_id}}"/>
-      </form>
+      event.target.text.value = "";
+      return false;
 
-      <hr>
-      {{/if}}
+    //this function is called when the new taks form is submitted
+      // var taskText = event.target.text.value;
+      // var projectID = event.target.project_id.value;
+      // var sprintID = event.target.sprint_id.value;
 
-    </header>
+      // Meteor.call("addTask", taskText, projectID, sprintID); //add projects
 
-    <ul>
-      {{> project currentProject}}
-    </ul>
-  </div>
+      // event.target.text.value = ""; //clear form
+      // return false; //prevent default form submit
+    },
 
-  <footer style="background-color:gold">
-    <br>
-    <p style="color: black"><em>For more information on Scrum, visit <a href="https://www.scrumalliance.org/why-scrum">https://www.scrumalliance.org/why-scrum</a></em></p>
+    //event handler to update a Session variable when the checkbox is checked or unchecked
+    //Session is a convenient place to store temporary UI state
+    "change .hide-completed input": function(event) {
+      Session.set("hideCompleted", event.target.checked);
+    }
+  });
 
-    <p>Download <a href="C:\Users\jchung\Desktop\Exec_Guide_to_Scrum.pdf" download>this</a> PDF to read the definitions and concepts.</p>
-  </footer>
-</body>
+  Template.task.events ({
+    "click .toggle-checked": function() {
+      Meteor.call("checkTask",this._id, !this.checked);
+    },
 
-<template name="project"> <!-- project template -->
+    "click .delete": function() {
+      if (confirm("Are you sure you want to delete this task?")) {
+          Meteor.call("deleteTask", this._id);
+          // var taskId = this._id;
+          // Meteor.call("deleteTask", taskId);
+      }
+    },
 
-    <!-- Project names -->
-  <h2>{{#if currentUser}}<button class="delete" onclick="change #user-select()">&times;</button>{{/if}}
-  {{text}}
-  {{#if currentUser}}<input type="checkbox" checked="{{checked}}" class="toggle-checked" />{{/if}}</h2>
+    "change #user-select": function (event, template) {
+      var taskId = this._id;
+      var userId = $(event.currentTarget).val();
+      console.log("assignedTask : " + userId, taskId);
+      Meteor.call("assignTask", userId, taskId);
+    }
+  });
 
-  {{#if currentUser}} <!--if there is a user signed in then they can edit to task list-->
-    <form class="new-tasks"><!--field that has a placeholder for new projects-->
-      <input type="text" name="text" placeholder="Type to add new tasks" />
-      <input type="hidden" name="project_id" value="{{_id}}"/>
-      <input type="hidden" name="sprint_id" value="{{_id}}"/>
-    </form>
-  {{/if}}
+  Template.task.onRendered(function () {
+    var $select = this.$('#user-select');
+    $select.find('option').attr({
+      selected: false
+    });
+    $select.find('option[value="' + this.data.assignedUser + '"]').attr({
+      selected: true
+    });
+  });
 
-  ({{incompleteCount1}}/{{totalCount}} Tasks Remaining)<!-- the remaining tasks -->
+  Template.task.helpers({
+    user: function(){
+      return Meteor.users.find();
+    }
 
-  <ul>
-    {{#each sprints _id}}
-      {{> sprint}}
-    {{/each}}
-  </ul>
+    // tasks: function(){
+    //   return Tasks.find();
+    // }
+  });
+}
 
-  <ul style="color:purple">
-    {{#each tasks _id}}
-      {{> task}}
-    {{/each}}
-  </ul>
+Meteor.methods({
+  addTask: function(task) { //add tasks
+    Tasks.insert(task);
+// addTask: function(taskText, projectID, sprintID) {
+    //   var d = new Date();
+    //   var n = d.toDateString();
 
-</template>
+    // if (!Meteor.userId()) {
+    //   throw new Meteor.Error("not-authorized");
+    //   console.log ("not authorized"); //log in console
+    // }
 
-<template name="sprint">
+    // Tasks.insert({
+    //   text: taskText,
+    //   project_id: projectID,
+    //   sprint_id: sprintID,
+    //   createdAt: n, //current time
+    //   deadline: new Date(+new Date + 12096e5),
+    //   taskOwner: Meteor.userId()
+    // });
 
-  <ul style="color:purple">
-    {{#each tasks _id}}
-      {{> task}}
-    {{/each}}
-  </ul>
+    // console.log ("Text:" + taskText);
+    // console.log ("ProjectID: " + projectID);
+    // console.log ("SprintID: " + sprintID);
 
-  <h3 style="color:orange"> {{#if currentUser}}<button class="delete" onclick="change #user-select()">&times;</button>{{/if}} {{text}} -- due {{deadline}}</h3>
-</template>
+    // event.target.text.value = "";
+    // return false;
+  },
 
-<template name="task"> <!-- task template -->
-  <li class="{{#if checked}}checked{{/if}}">
-    {{#if currentUser}}
-      <button class="delete" onclick="change #user-select()">&times;</button>
-      <input type="checkbox" checked="{{checked}}" class="toggle-checked" />
-    {{/if}}
+  deleteTask: function (taskId) { //delete task
+    Tasks.remove(taskId);
+  },
 
-    {{text}} - {{createdAt}} <br>
-  </li>
+  checkTask: function (taskId, setChecked) { //check off tasks
+    Tasks.update(taskId, {$set: {checked: setChecked}});
+  },
 
-  {{#if currentUser}}
+  assignTask: function (userId, taskId) { //assign tasks to users
+    //need to save to all accounts
+    Tasks.update({ _id: taskId }, {$set: {assignedUser: userId}});
+  }
+});
 
-    <select data-user="{{assignedUser}}" id="user-select">
-      <option disabled>Select User</option>
-      {{#each user}}
-        <option value="{{_id}}">{{username}}</option>
-      {{/each}}
-    </select>
 
-  {{/if}}
-</template>
+
+
+
+
