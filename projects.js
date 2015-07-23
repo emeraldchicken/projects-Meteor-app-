@@ -33,7 +33,7 @@ if (Meteor.isClient) {
       Meteor.call("addProject", text); //add projects
 
       event.target.text.value = ""; //clear form
-      return false; //prevent default form submit -
+      return false; //prevent default form submit
     },
 
     "change #project-select": function (event, template) {
@@ -51,9 +51,8 @@ if (Meteor.isClient) {
     },
 
     "click .delete": function() {
-      if (confirm("Are you sure you want to delete this task?") == true) {
+      if (confirm("Are you sure you want to delete this task?")) {
           Meteor.call("deleteProject", this._id);
-      } else {
       }
     }
   });
@@ -85,15 +84,21 @@ if (Meteor.isClient) {
     }
   });
 
-  Template.body.onRendered(function () {
-    // var $select = this.$('select');
-    // $select.find('option').attr({
-    //   selected: false
-    // });
-    // $select.find('option[value="' + this.data.selectedUser + '"]').attr({
-    //   selected: true
-    // });
+  Template.example.helpers({
+    options: function() {
+      return {
+        defaultView: 'basicWeek'
+      };
+    }
   });
+
+  // Template.fullcalendar.rendered = function() {
+  //   var div = this.$(this.firstNode);
+  //   //jquery takes care of undefined values, no need to check here
+  //   div.attr('id',this.data.id);
+  //   div.addClass(this.data.class);
+  //   div.fullCalendar(this.data);
+  // };
 
   //configure accouts UI to use usernames instead of email addresses
   Accounts.ui.config({
@@ -113,6 +118,7 @@ Meteor.methods ({
       createdAt: new Date(),
       projectOwner: Meteor.userId()
     });
+    console.log ("Text: " + text);
   },
 
   deleteProject: function (projectId) { //delete project
